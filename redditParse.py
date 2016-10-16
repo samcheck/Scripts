@@ -46,4 +46,4 @@ else:	# Else we have the front page of reddit, save as JSON
 
 # Save the JSON file
 with open(jsonFile, 'w') as outfile:
-		json.dump(theJSON, outfile)
+	json.dump(theJSON, outfile)
