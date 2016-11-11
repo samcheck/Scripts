@@ -6,7 +6,7 @@ import logging
 import os
 from pathlib import Path
 from urllib.request import urlopen, Request
-# import requests
+import requests
 
 logger = logging.getLogger(__name__)
 
