@@ -1,6 +1,9 @@
 # ignore stray .json files
 *.json
 
+# ignore imgur images downloaded
+IMGURdl/images/*
+
 # Standard python exclusions
 # Byte-compiled / optimized / DLL files
 __pycache__/
