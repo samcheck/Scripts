@@ -86,14 +86,27 @@ def save_ep(show_id, soup=None):
     else:
         print('Warning: ep url not found')
 
+
+def find_link(show_id, direction, soup=None):
+    if not isinstance(soup, BeautifulSoup):
+        soup = get_page(show_id)
+
+    # Find the URL elements
+    if direction == 'left' or 'right':
+        link = soup.find_all('a', attrs={'style': 'float: {};'.format(direction), 'class': 'showLink'})
+    else:
+        return None
+
+    show_id = link[0].get('href').replace('/shows/?id=', '')
+    show_info = link[0].find('div', attrs={'class': 'details'}).text.strip().split('\n')
+
+    return{'direction': direction, 'show_id': show_id, 'show_guest': show_info[0], 'show_date': show_info[1]}
+
+
 def main():
     show_id = sys.argv[1]
     soup = get_page(show_id)
-
-    # Find the URL elements
-    left_link = soup.find_all('a', attrs={'style': 'float: left;', 'class': 'showLink'})
-    right_link = soup.find_all('a', attrs={'style': 'float: right;', 'class': 'showLink'})
-
+    links = find_link(show_id, 'right', soup)
     url_ep = get_mp3_url(show_id, soup)
     title = get_page_title(show_id, soup)
 
@@ -105,12 +118,8 @@ def main():
             if title['year'] is not None:
                 print('Date: ' + title['year'] + '-' + title['month']+ '-' + title['day'])
             print(url_ep)
-            print('\nPrevious Show:')
-            print(left_link[0].get('href'))
-            print(left_link[0].find('div', attrs={'class': 'details'}).text.strip())
-            print('\nNext Show:')
-            print(right_link[0].get('href'))
-            print(right_link[0].find('div', attrs={'class': 'details'}).text.strip().split('\n'))
+            print(links)
+
             if len(sys.argv) == 3:
                 if sys.argv[2] == 'd':
                     save_ep(show_id, soup)
