@@ -5,7 +5,7 @@ import json, requests
 
 # Download the JSON data from http://freegeoip.net/json/
 url ='http://freegeoip.net/json/'
-response = requests.get(url)
+response = requests.get(url, timeout=10)
 response.raise_for_status()
 
 # Load JSON data into a Python variable and print
