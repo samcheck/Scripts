@@ -9,19 +9,38 @@ import requests
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 
-URL_BASE = "http://www.lovelinetapes.com/shows/?id="
+URL_BASE = "http://www.lovelinetapes.com/shows/"
 MP3_BASE = "http://recordings.lovelinetapes.com/"
 EXTEN = '.mp3'
 CHUNK_SIZE = 1024
 
 def get_page(show_id):
-    url = (URL_BASE + show_id)
+    url = (URL_BASE + '?id=' + show_id)
 
     print('Downloading page %s...' % url)
     res = requests.get(url)
     res.raise_for_status()
 
     return BeautifulSoup(res.text, "lxml")
+
+
+def get_year_links(year):
+    url = (URL_BASE + 'browse/?y=' + year)
+
+    print('Downloading page %s...' % url)
+    res = requests.get(url)
+    res.raise_for_status()
+
+    soup = BeautifulSoup(res.text, "lxml")
+
+    # Find the URL elements
+    links = soup.find_all('a', attrs={'class': 'showLink'})
+    show_id = []
+    for link in links:
+        show_id.append(link.get('href').replace('/shows/?id=', ''))
+
+    return show_id
+
 
 
 def get_mp3_url(show_id, soup=None):
@@ -109,7 +128,7 @@ def main():
     links = find_link(show_id, 'right', soup)
     url_ep = get_mp3_url(show_id, soup)
     title = get_page_title(show_id, soup)
-
+    year = get_year_links('2001')
     if title['guest'] is None:
         print('Could not find show.')
     else:
@@ -119,7 +138,7 @@ def main():
                 print('Date: ' + title['year'] + '-' + title['month']+ '-' + title['day'])
             print(url_ep)
             print(links)
-
+            print(year)
             if len(sys.argv) == 3:
                 if sys.argv[2] == 'd':
                     save_ep(show_id, soup)
