@@ -4,6 +4,7 @@
 import re
 import sys
 import os
+import logging
 
 import requests
 from tqdm import tqdm
@@ -17,7 +18,7 @@ CHUNK_SIZE = 1024
 def get_page(show_id):
     url = (URL_BASE + '?id=' + show_id)
 
-    print('Downloading page %s...' % url)
+    logging.info('Downloading page %s...' % url)
     res = requests.get(url)
     res.raise_for_status()
 
@@ -27,7 +28,7 @@ def get_page(show_id):
 def get_year_links(year):
     url = (URL_BASE + 'browse/?y=' + year)
 
-    print('Downloading page %s...' % url)
+    logging.info('Downloading page %s...' % url)
     res = requests.get(url)
     res.raise_for_status()
 
@@ -35,10 +36,10 @@ def get_year_links(year):
 
     # Find the URL elements
     links = soup.find_all('a', attrs={'class': 'showLink'})
-    show_id = []
+    show_id, show_info = [], []
     for link in links:
         show_id.append(link.get('href').replace('/shows/?id=', ''))
-
+        #show_info.append(link.find('div', attrs={'class': 'details'}).text.strip().split('\n'))
     return show_id
 
 
@@ -93,17 +94,17 @@ def save_ep(show_id, soup=None):
     curpath = os.path.abspath(os.curdir)
     # Download the episode
     if url_ep is not None:
-        print('Downloading %s...' % url_ep)
+        logging.info('Downloading %s...' % url_ep)
         r = requests.get(url_ep, stream=True)
         r.raise_for_status()
         size = int(r.headers['Content-Length'])
         if r.status_code == 200:
-            print('Saving as %s' % save_name)
+            logging.info('Saving as: %s' % save_name)
             with open(os.path.join(curpath, save_name), 'wb') as f:
                 for chunk in tqdm(r.iter_content(chunk_size=CHUNK_SIZE), total=size/CHUNK_SIZE, unit='kb'):
                     f.write(chunk)
     else:
-        print('Warning: ep url not found')
+        logging.warning('Episode url not found')
 
 
 def find_link(show_id, direction, soup=None):
@@ -123,28 +124,35 @@ def find_link(show_id, direction, soup=None):
 
 
 def main():
-    show_id = sys.argv[1]
-    soup = get_page(show_id)
-    links = find_link(show_id, 'right', soup)
-    url_ep = get_mp3_url(show_id, soup)
-    title = get_page_title(show_id, soup)
-    year = get_year_links('2001')
-    if title['guest'] is None:
-        print('Could not find show.')
+    logging.basicConfig(filename='lltapes.log', level=logging.DEBUG,
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.getLogger('requests').setLevel(logging.CRITICAL)
+    logger = logging.getLogger(__name__)
+    if len(sys.argv) > 1:
+        show_id = sys.argv[1]
+        soup = get_page(show_id)
+        links = find_link(show_id, 'right', soup)
+        url_ep = get_mp3_url(show_id, soup)
+        title = get_page_title(show_id, soup)
+        if title['guest'] is None:
+            logging.warning('Could not find show.')
+        else:
+            try:
+                logging.info('Guest: ' + title['guest'])
+                if title['year'] is not None:
+                    logging.info('Date: ' + title['year'] + '-' + title['month']+ '-' + title['day'])
+                logging.info(url_ep)
+                logging.info(links)
+                if len(sys.argv) == 3:
+                    if sys.argv[2] == 'd':
+                        save_ep(show_id, soup)
+            except requests.exceptions.MissingSchema:
+                # skip this
+                logging.warning('Could not find show.')
     else:
-        try:
-            print('Guest: ' + title['guest'])
-            if title['year'] is not None:
-                print('Date: ' + title['year'] + '-' + title['month']+ '-' + title['day'])
-            print(url_ep)
-            print(links)
-            print(year)
-            if len(sys.argv) == 3:
-                if sys.argv[2] == 'd':
-                    save_ep(show_id, soup)
-        except requests.exceptions.MissingSchema:
-            # skip this
-            print('Could not find show.')
+        year = get_year_links('2001')
+        logging.info(year)
+
 
 if __name__ == "__main__":
     main()
