@@ -7,13 +7,12 @@ import os
 import logging
 
 import requests
-from tqdm import tqdm
 from bs4 import BeautifulSoup
 
 URL_BASE = "http://www.lovelinetapes.com/shows/"
 MP3_BASE = "http://recordings.lovelinetapes.com/"
 EXTEN = '.mp3'
-CHUNK_SIZE = 1024
+CHUNK_SIZE = 1024*8
 
 def get_page(show_id):
     url = (URL_BASE + '?id=' + show_id)
@@ -89,7 +88,7 @@ def save_ep(show_id, soup=None):
     url_ep = get_mp3_url(show_id, soup)
     title = get_page_title(show_id, soup)
     date = title['year'] + '-' + title['month']+ '-' + title['day']
-    save_name = ('Loveline - ' + date + ' - ' + title['guest'] + EXTEN)
+    save_name = ('Loveline - ' + date + ' (Guest - ' + title['guest'] + ')' + EXTEN)
 
     curpath = os.path.abspath(os.curdir)
     # Download the episode
@@ -101,7 +100,7 @@ def save_ep(show_id, soup=None):
         if r.status_code == 200:
             logging.info('Saving as: %s' % save_name)
             with open(os.path.join(curpath, save_name), 'wb') as f:
-                for chunk in tqdm(r.iter_content(chunk_size=CHUNK_SIZE), total=size/CHUNK_SIZE, unit='kb'):
+                for chunk in r.iter_content(chunk_size=CHUNK_SIZE):
                     f.write(chunk)
     else:
         logging.warning('Episode url not found')
