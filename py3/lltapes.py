@@ -1,22 +1,46 @@
-
-
+#!/usr/bin/python3
+# lltapes.py - Uses BeautifulSoup and requests to parse and download episodes
+#              from lovelinetapes.
 
 import re
 import sys
 import os
 import logging
+from queue import Queue
+from threading import Thread
 
 import requests
 from bs4 import BeautifulSoup
 
 URL_BASE = "http://www.lovelinetapes.com/shows/"
-MP3_BASE = "http://recordings.lovelinetapes.com/"
 EXTEN = '.mp3'
 CHUNK_SIZE = 1024*8
 
-def get_page(show_id):
-    url = (URL_BASE + '?id=' + show_id)
+class DownloadWorker(Thread):
+    """Saves episodes by show_id from queue"""
+    def __init__(self, queue):
+        super(DownloadWorker, self).__init__()
+        self.queue = queue
 
+    def run(self):
+        while True:
+            # Get the work from the queue and expand the tuple
+            show_id = self.queue.get()
+            save_ep(show_id)
+            self.queue.task_done()
+
+
+def get_page(show_id):
+    """Uses bs4 to get the page of a given Loveline episode by show_id.
+
+    Argument:
+        show_id: numeric id (as string) from Loveline Tapes site.
+
+    Returns:
+        BeautifulSoup object of the page, decoded with lxml.
+    """
+
+    url = (URL_BASE + '?id=' + show_id)
     logging.info('Downloading page %s...' % url)
     res = requests.get(url)
     res.raise_for_status()
@@ -25,8 +49,17 @@ def get_page(show_id):
 
 
 def get_year_links(year):
-    url = (URL_BASE + 'browse/?y=' + year)
+    """Uses bs4 to get show_ids for all episodes in a given year.
 
+    Argument:
+        year: a year (as string) to search the Loveline Tapes site.
+        soup: optional BeautifulSoup object to search.
+
+    Returns:
+        List containing strings of show_ids in the given year.
+    """
+
+    url = (URL_BASE + 'browse/?y=' + year)
     logging.info('Downloading page %s...' % url)
     res = requests.get(url)
     res.raise_for_status()
@@ -42,8 +75,17 @@ def get_year_links(year):
     return show_id
 
 
-
 def get_mp3_url(show_id, soup=None):
+    """Uses bs4 to get link to mp3 recording of Loveline episode.
+
+    Argument:
+        show_id: numeric id (as string) from Loveline Tapes site.
+        soup: optional BeautifulSoup object to search.
+
+    Returns:
+        String of the link to mp3 recording.
+    """
+
     if not isinstance(soup, BeautifulSoup):
         soup = get_page(show_id)
 
@@ -53,12 +95,23 @@ def get_mp3_url(show_id, soup=None):
         url_ep = None
     else:
         mp3_link = re.search(r'h\=\w+', page_url['content']).group().replace('h=', '') #match on the mp3 link format
-        url_ep = MP3_BASE + mp3_link + EXTEN
+        url_ep = "http://recordings.lovelinetapes.com/" + mp3_link + EXTEN
 
     return url_ep
 
 
 def get_page_title(show_id, soup=None):
+    """Uses bs4 to get guest and date of Loveline episode.
+
+    Argument:
+        show_id: numeric id (as string) from Loveline Tapes site
+        soup: optional BeautifulSoup object to search
+
+    Returns:
+        Dictionary containing guest, year, month and day as strings.
+        Month and day are zero padded.
+    """
+
     if not isinstance(soup, BeautifulSoup):
         soup = get_page(show_id)
 
@@ -82,6 +135,15 @@ def get_page_title(show_id, soup=None):
 
 
 def save_ep(show_id, soup=None):
+    """Uses requests to download an mp3 recording of a Loveline episode.
+
+    Argument:
+        show_id: numeric id (as string) from Loveline Tapes site.
+        soup: optional BeautifulSoup object to search.
+
+    Returns:
+        Nothing, downloads episode to current directory.
+    """
     if not isinstance(soup, BeautifulSoup):
         soup = get_page(show_id)
 
@@ -107,6 +169,18 @@ def save_ep(show_id, soup=None):
 
 
 def find_link(show_id, direction, soup=None):
+    """Uses bs4 to find links to next or previous episodes from current show id
+    of Loveline episode.
+
+    Argument:
+        show_id: numeric id (as string) from Loveline Tapes site.
+        soup: optional BeautifulSoup object to search.
+
+    Returns:
+        None if direction is not 'left' or 'right'
+        Dictionary containing direction of link, show id, show guest, and show date.
+    """
+
     if not isinstance(soup, BeautifulSoup):
         soup = get_page(show_id)
 
@@ -127,7 +201,7 @@ def main():
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.getLogger('requests').setLevel(logging.CRITICAL)
     logger = logging.getLogger(__name__)
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
         show_id = sys.argv[1]
         soup = get_page(show_id)
         links = find_link(show_id, 'right', soup)
@@ -148,10 +222,23 @@ def main():
             except requests.exceptions.MissingSchema:
                 # skip this
                 logging.warning('Could not find show.')
-    else:
-        year = get_year_links('2001')
-        logging.info(year)
 
+    elif len(sys.argv) == 2:
+        year = get_year_links('2001')
+        # Create a Queue to communicate with the worker threads
+        queue = Queue()
+        # Create 8 worker threads
+        for x in range(8):
+            worker = DownloadWorker(queue)
+            # Setting daemon to True will let the main thread exit even though the workers are blocking
+            worker.daemon = True
+            worker.start()
+        # Put tasks into the queue as tuples
+        for show_id in year:
+            logger.info('Queueing {}'.format(show_id))
+            queue.put(show_id)
+        # Causes the main thread to wait for the queue to finish processing all the tasks
+        queue.join()
 
 if __name__ == "__main__":
     main()
