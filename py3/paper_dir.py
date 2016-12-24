@@ -6,6 +6,7 @@ import sys
 import os
 import shutil
 import logging
+import errno
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG,
@@ -15,15 +16,19 @@ def list_all(in_path):
     if os.path.exists(in_path) and os.path.isdir(in_path):
         for root, dirs, files in os.walk(in_path):
             for filename in files:
-                yield root, filename
+                yield root, dirs, filename
 
 def clone(in_path, new_path):
-    for old_path, item in list_all(in_path):
-        com_path = in_path.strip(os.path.commonpath([old_path, new_path]))
-        logging.info('Common path: {}'.format(com_path))
-        new_name = os.path.join(new_path, com_path, item)
-        logging.info('Creating: {}'.format(new_name))
-        touch(new_name)
+    names = os.listdir(in_path)
+    os.makedirs(new_path)
+    for name in names:
+        in_path_name = os.path.join(in_path, name)
+        new_path_name = os.path.join(new_path, name)
+        if os.path.isdir(in_path_name):
+            clone(in_path_name, new_path_name)
+        else:
+            touch(new_path_name)
+
 
 def touch(path_file):
     try:
