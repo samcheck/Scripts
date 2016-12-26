@@ -136,6 +136,7 @@ def get_page_title(show_id, soup=None):
 
 def save_ep(show_id, soup=None):
     """Uses requests to download an mp3 recording of a Loveline episode.
+    Checks to determine if the episode already exists and is of expected size.
 
     Argument:
         show_id: numeric id (as string) from Loveline Tapes site.
@@ -151,19 +152,27 @@ def save_ep(show_id, soup=None):
     title = get_page_title(show_id, soup)
     date = title['year'] + '-' + title['month']+ '-' + title['day']
     save_name = ('Loveline - ' + date + ' (Guest - ' + title['guest'] + ')' + EXTEN)
-
     curpath = os.path.abspath(os.curdir)
+
     # Download the episode
     if url_ep is not None:
-        logging.info('Downloading %s...' % url_ep)
+        logging.info('Downloading {}'.format(url_ep))
         r = requests.get(url_ep, stream=True)
         r.raise_for_status()
         size = int(r.headers['Content-Length'])
-        if r.status_code == 200:
-            logging.info('Saving as: %s' % save_name)
-            with open(os.path.join(curpath, save_name), 'wb') as f:
-                for chunk in r.iter_content(chunk_size=CHUNK_SIZE):
-                    f.write(chunk)
+        if os.path.isfile(save_name) and (os.path.getsize(save_name) == size):
+            # check if file already exists and is of the expected size
+            # can still replace interupted downloads
+            logging.warning('Episode already downloaded, skipping.')
+        else:
+            if r.status_code == 200:
+                logging.info('Saving as: {}'.format(save_name))
+                logging.info('Expected file size: {} bytes'.format(size))
+                with open(os.path.join(curpath, save_name), 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=CHUNK_SIZE):
+                        f.write(chunk)
+            else:
+                logging.warning('Problem loading page: HTML response code {}'.format(r.status_code))
     else:
         logging.warning('Episode url not found')
 
@@ -224,7 +233,7 @@ def main():
                 logging.warning('Could not find show.')
 
     elif len(sys.argv) == 2:
-        year = get_year_links('2001')
+        year = get_year_links(sys.argv[1])
         # Create a Queue to communicate with the worker threads
         queue = Queue()
         # Create 8 worker threads
