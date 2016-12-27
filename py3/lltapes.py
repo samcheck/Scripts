@@ -151,7 +151,8 @@ def save_ep(show_id, soup=None):
     url_ep = get_mp3_url(show_id, soup)
     title = get_page_title(show_id, soup)
     date = title['year'] + '-' + title['month']+ '-' + title['day']
-    save_name = ('Loveline - ' + date + ' (Guest - ' + title['guest'] + ')' + EXTEN)
+    name = ('Loveline - ' + date + ' (Guest - ' + title['guest'] + ')' + EXTEN)
+    save_name = safe_name(name)
     curpath = os.path.abspath(os.curdir)
 
     # Download the episode
@@ -175,6 +176,11 @@ def save_ep(show_id, soup=None):
                 logging.warning('Problem loading page: HTML response code {}'.format(r.status_code))
     else:
         logging.warning('Episode url not found')
+
+
+def safe_name(save_name):
+    safe_name = save_name.replace('/', ' ')
+    return safe_name
 
 
 def find_link(show_id, direction, soup=None):
@@ -237,7 +243,7 @@ def main():
         # Create a Queue to communicate with the worker threads
         queue = Queue()
         # Create 8 worker threads
-        for x in range(8):
+        for x in range(4):
             worker = DownloadWorker(queue)
             # Setting daemon to True will let the main thread exit even though the workers are blocking
             worker.daemon = True
