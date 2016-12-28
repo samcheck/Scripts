@@ -179,8 +179,23 @@ def save_ep(show_id, soup=None):
 
 
 def safe_name(save_name):
-    safe_name = save_name.replace('/', ' ')
-    return safe_name
+    """Removes and replaces characters in a filename to make it safe for the filesystem.
+
+    Argument:
+        save_name: filename to work with (no path).
+
+    Returns:
+        string of the filename after disallowed characters are removed.
+        None if no filename is provided.
+    """
+
+    path, tail = os.path.basename(save_name)
+    if tail is not None:
+        safe_name = tail.replace('/', ' ')
+        return safe_name
+    else:
+        return None
+
 
 
 def find_link(show_id, direction, soup=None):
