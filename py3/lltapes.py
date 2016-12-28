@@ -6,6 +6,9 @@ import re
 import sys
 import os
 import logging
+import argparse
+
+# for multi-threading
 from queue import Queue
 from threading import Thread
 
@@ -227,12 +230,22 @@ def find_link(show_id, direction, soup=None):
 
 
 def main():
+    # set up logging
     logging.basicConfig(filename='lltapes.log', level=logging.DEBUG,
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.getLogger('requests').setLevel(logging.CRITICAL)
     logger = logging.getLogger(__name__)
-    if len(sys.argv) > 2:
-        show_id = sys.argv[1]
+
+    # set up argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-y', '--year', help='Year of Loveline to search.')
+    parser.add_argument('-s', '--show', help='Show, based on Loveline Tapes show id, to search.')
+    parser.add_argument('-d', '--download', help='Download flag to download episode.', action='store_true')
+    parser.add_argument('-t', '--threads', help='Number of threads to use to download episodes, default to 4.', default=4, type=int)
+    args = parser.parse_args()
+
+    if args.show:
+        show_id = args.show
         soup = get_page(show_id)
         links = find_link(show_id, 'right', soup)
         url_ep = get_mp3_url(show_id, soup)
@@ -246,19 +259,18 @@ def main():
                     logging.info('Date: ' + title['year'] + '-' + title['month']+ '-' + title['day'])
                 logging.info(url_ep)
                 logging.info(links)
-                if len(sys.argv) == 3:
-                    if sys.argv[2] == 'd':
-                        save_ep(show_id, soup)
+                if args.download:
+                    save_ep(show_id, soup)
             except requests.exceptions.MissingSchema:
                 # skip this
                 logging.warning('Could not find show.')
 
-    elif len(sys.argv) == 2:
-        year = get_year_links(sys.argv[1])
+    elif args.year:
+        year = get_year_links(args.year)
         # Create a Queue to communicate with the worker threads
         queue = Queue()
         # Create 8 worker threads
-        for x in range(4):
+        for x in range(args.threads):
             worker = DownloadWorker(queue)
             # Setting daemon to True will let the main thread exit even though the workers are blocking
             worker.daemon = True
