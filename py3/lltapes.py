@@ -282,5 +282,9 @@ def main():
         # Causes the main thread to wait for the queue to finish processing all the tasks
         queue.join()
 
+    else:
+        parser.print_help()
+        sys.exit(1)
+
 if __name__ == "__main__":
     main()
