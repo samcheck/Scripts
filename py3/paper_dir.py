@@ -7,16 +7,9 @@ import os
 import shutil
 import logging
 import errno
+import argparse
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def list_all(in_path):
-    if os.path.exists(in_path) and os.path.isdir(in_path):
-        for root, dirs, files in os.walk(in_path):
-            for filename in files:
-                yield root, dirs, filename
 
 def clone(in_path, new_path):
     names = os.listdir(in_path)
@@ -42,9 +35,21 @@ def touch(path_file):
             f.write("")
 
 def main():
-    in_path = sys.argv[1] # take args in from commandline
-    new_path = sys.argv[2]
-    clone(in_path, new_path)
+    # set up logging
+    logger = logging.getLogger(__name__)
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # set up argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-i', '--input', help='Input directory to clone.')
+    parser.add_argument('-o', '--out', help='Directory to clone into.')
+    args = parser.parse_args()
+    if args.input and args.out:
+        clone(args.input, args.out)
+    else:
+        parser.print_help()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
