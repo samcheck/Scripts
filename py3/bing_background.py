@@ -28,8 +28,8 @@ def change_wp(directory, link):
         logging.error('No command to change wallpaper.')
 
 
-def setup_download_dir(saveDir):
-    download_dir = os.path.join(os.getcwd(), saveDir)
+def setup_download_dir(save_dir):
+    download_dir = os.path.join(os.getcwd(), save_dir)
     if not os.path.exists(download_dir):
         os.mkdir(download_dir)
     return download_dir
@@ -42,8 +42,8 @@ def main():
     logger = logging.getLogger(__name__)
 
     url = "http://www.bing.com/"
-    saveDir = "bing backgrounds"
-    dl_dir = setup_download_dir()
+    save_dir = "bing backgrounds"
+    dl_dir = setup_download_dir(save_dir)
 
     driver = webdriver.Firefox()
     driver.get(url)
