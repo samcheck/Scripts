@@ -16,11 +16,23 @@ def download_link(directory, link):
     with urlopen(link) as image, open(download_path, 'wb') as f:
         f.write(image.read())
 
+
 def change_wp(directory, link):
-    # Changes wallpaper for Unity desktop
-    img_path = os.path.join(directory, os.path.basename(link))
-    command = "gsettings set org.gnome.desktop.background picture-uri file://{}".format(img_path)
-    os.system(command)
+    # Changes wallpaper for Unity / Gnome desktop
+    desktop = os.environ.get("DESKTOP_SESSION")
+    if desktop.lower in ["gnome", "ubuntu", "unity"]:
+        img_path = os.path.join(directory, os.path.basename(link))
+        command = "gsettings set org.gnome.desktop.background picture-uri file://{}".format(img_path)
+        os.system(command)
+    else:
+        logging.error('No command to change wallpaper.')
+
+
+def setup_download_dir(saveDir):
+    download_dir = os.path.join(os.getcwd(), saveDir)
+    if not os.path.exists(download_dir):
+        os.mkdir(download_dir)
+    return download_dir
 
 
 def main():
@@ -30,7 +42,9 @@ def main():
     logger = logging.getLogger(__name__)
 
     url = "http://www.bing.com/"
-    dl_dir = os.getcwd()
+    saveDir = "bing backgrounds"
+    dl_dir = setup_download_dir()
+
     driver = webdriver.Firefox()
     driver.get(url)
     logging.info('Downloading page %s...' % url)
@@ -43,6 +57,7 @@ def main():
     link = soup.find_all('div', {'id': 'bgDiv'})[0].attrs['style']
     img_link = link[(link.find('url("')+5):link.find('");')]
 
+    # Download and change wallpaper
     download_link(dl_dir, img_link)
     change_wp(dl_dir, img_link)
 
