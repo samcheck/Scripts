@@ -1,5 +1,7 @@
-# ignore stray .json files
+# ignore stray json, mp3 and jpg files
 *.json
+*.mp3
+*.jpg
 
 # ignore imgur images downloaded
 IMGURdl/images/*
