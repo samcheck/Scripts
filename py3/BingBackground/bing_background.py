@@ -42,7 +42,7 @@ def main():
     logger = logging.getLogger(__name__)
 
     url = "http://www.bing.com/"
-    save_dir = "bing backgrounds"
+    save_dir = "images"
     dl_dir = setup_download_dir(save_dir)
 
     driver = webdriver.Firefox()
