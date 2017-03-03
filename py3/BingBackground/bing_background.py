@@ -20,7 +20,7 @@ def download_link(directory, link):
 def change_wp(directory, link):
     # Changes wallpaper for Unity / Gnome desktop
     desktop = os.environ.get("DESKTOP_SESSION")
-    if desktop.lower in ["gnome", "ubuntu", "unity"]:
+    if desktop in ["gnome", "ubuntu", "unity"]:
         img_path = os.path.join(directory, os.path.basename(link))
         command = "gsettings set org.gnome.desktop.background picture-uri file://{}".format(img_path)
         os.system(command)
