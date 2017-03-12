@@ -1,4 +1,6 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+# bing_background.py - downoads the bing homepage background and sets it as the
+#                      desktop backgroud.
 
 import logging
 import os
@@ -7,6 +9,7 @@ import time
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from pyvirtualdisplay import Display
 
 
 def download_link(directory, link):
@@ -37,21 +40,29 @@ def setup_download_dir(save_dir):
 
 def main():
     # set up logging
-    logging.basicConfig(filename='bing_bg.log', level=logging.DEBUG,
+    logging.basicConfig(filename='bing_bg.log', filemode='w', level=logging.INFO,
                         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
-    url = "http://www.bing.com/"
+    url = "https://www.bing.com/"
     save_dir = "images"
     dl_dir = setup_download_dir(save_dir)
+
+    # set up a virtual display to use with selenium
+    display = Display(visible=0, size=(800, 600))
+    display.start()
 
     driver = webdriver.Firefox()
     driver.get(url)
     logging.info('Downloading page %s...' % url)
-    time.sleep(3) #hacky sleep to allow bing homepage to load so we can grab the image
+    time.sleep(4) #hacky sleep to allow bing homepage to load so we can grab the image
+
     # Parse the bing homepage
     soup = BeautifulSoup(driver.page_source, "html.parser")
+
+    # clean up browser and stop virtual display
     driver.quit() # seems to spit out "'NoneType' object has no attribute 'path'"
+    display.stop()
 
     # Find the URL elements
     link = soup.find_all('div', {'id': 'bgDiv'})[0].attrs['style']
