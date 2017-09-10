@@ -34,7 +34,7 @@ def get_page(term):
     """
 
     url = (URL_BASE + '&q=' + term)
-    logging.info('Downloading page %s...' % url)
+    logging.info('Downloading page {}'.format(url))
     res = requests.get(url)
     res.raise_for_status()
 
@@ -55,18 +55,23 @@ def get_details(term, soup=None):
     if not isinstance(soup, BeautifulSoup):
         soup = get_page(term)
 
+    # Check if there are no matches and return
+    no_match = soup.find_all('div', class_="market_listing_table_message")
+    if no_match and "There were no items matching your search" in no_match[0].get_text():
+        logging.info('No match for search: {}'.format(term))
+        return 0
+
+    # Get item stats from search result
     volume = soup.find_all('span', class_="market_listing_num_listings_qty")
     sale_price = soup.find_all('span', class_="sale_price")
     item_name = soup.find_all('span', class_="market_listing_item_name")
     game_name = soup.find_all('span', class_="market_listing_game_name")
 
+    # Create objects for each item found
     obj = []
     for i in range(len(volume)):
-        vol = str(volume[i]).replace('<span class="market_listing_num_listings_qty">', '').replace('</span>', '')
-        price = str(sale_price[i]).replace('<span class="sale_price">', '').replace('</span>', '')
-        name = re.search(r';">.+', str(item_name[i])).group().replace(';">', '').replace('</span>', '')
-        game = str(game_name[i]).replace('<span class="market_listing_game_name">', '').replace('</span>', '')
-        obj.append(SteamItem(name, price, vol, game))
+        obj.append(SteamItem(item_name[i].get_text(), sale_price[i].get_text(),
+                                volume[i].get_text(), game_name[i].get_text()))
 
     return obj
 
@@ -86,8 +91,11 @@ def main():
     if args.search:
         term = args.search
         out = get_details(term)
-        for item in out:
-            item.display()
+        if out == 0:
+            print("No matches for search: {}".format(term))
+        else:
+            for item in out:
+                item.display()
 
     else:
         parser.print_help()
