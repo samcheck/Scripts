@@ -1,11 +1,11 @@
-import re
 import logging
 import argparse
+import sys
 
 import requests
 from bs4 import BeautifulSoup
 
-URL_BASE = "https://steamcommunity.com/market/search?appid=730"
+URL_BASE = "https://steamcommunity.com/market/search?"
 
 class SteamItem(object):
     """Class to hold info about items on Steam Market"""
@@ -23,6 +23,18 @@ class SteamItem(object):
         print("-"*40)
 
 
+class SteamGame(object):
+    """Class to hold info about games on Steam Market"""
+    def __init__(self, name, app_id):
+        self.name = name
+        self.app_id = app_id
+
+    def display(self):
+        print("Name: {}".format(self.name))
+        print("Steam App ID: {}".format(self.app_id))
+        print("-"*40)
+
+
 def get_page(term):
     """Uses bs4 to get the page of a given search term.
 
@@ -33,7 +45,7 @@ def get_page(term):
         BeautifulSoup object of the page, decoded with lxml.
     """
 
-    url = (URL_BASE + '&q=' + term)
+    url = (URL_BASE + 'q=' + term)
     logging.info('Downloading page {}'.format(url))
     res = requests.get(url)
     res.raise_for_status()
@@ -76,6 +88,29 @@ def get_details(term, soup=None):
     return obj
 
 
+def get_games(soup=None):
+    """Uses bs4 to get list of games on Steam Marketplace.
+
+    Argument:
+        (Optionally) soup: bs4 object to search on.
+
+    Returns:
+        Array of objects, containing all games on marketplace.
+    """
+
+    if not isinstance(soup, BeautifulSoup):
+        soup = get_page('') #empty search
+
+    games = soup.select('div[data-appid]')
+    # Create objects for each item found
+    obj = []
+    for i in range(len(games)):
+        obj.append(SteamGame(games[i].find('span').get_text(),
+                            games[i]['data-appid']))
+
+    return obj
+
+
 def main():
     # set up logging
     logging.basicConfig(filename='sscrape.log', level=logging.DEBUG,
@@ -86,20 +121,28 @@ def main():
     # set up argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--search', help='Search term.')
+    parser.add_argument('-g', '--game', help='Game to search, default search entire market', default=None)
+    parser.add_argument('-l', '--list', help='List games on steam marketplace to search', action='store_true')
+
     args = parser.parse_args()
 
-    if args.search:
-        term = args.search
-        out = get_details(term)
-        if out == 0:
-            print("No matches for search: {}".format(term))
-        else:
-            for item in out:
-                item.display()
-
-    else:
+    if not args.search:
         parser.print_help()
         sys.exit(1)
+
+    # optionally list the games that can be searched on the marketplace
+    if args.list:
+        game_list = get_games()
+        for item in game_list:
+            item.display()
+
+    term = args.search
+    out = get_details(term)
+    if out == 0:
+        print("No matches for search: {}".format(term))
+    else:
+        for item in out:
+            item.display()
 
 
 if __name__ == "__main__":
