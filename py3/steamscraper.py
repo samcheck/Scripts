@@ -9,15 +9,19 @@ URL_BASE = "https://steamcommunity.com/market/search?"
 
 class SteamItem(object):
     """Class to hold info about items on Steam Market"""
-    def __init__(self, name, price, volume, game):
+    def __init__(self, name, buyer_price, seller_price, volume, game):
         self.name = name
-        self.price = price
+        self.buyer_price = float(buyer_price[1:])
+        self.seller_price = float(seller_price[1:])
+        self.steam_cut = round(self.buyer_price - self.seller_price, 2)
         self.volume = volume
         self.game = game
 
     def display(self):
         print("Name: {}".format(self.name))
-        print("Price: {}".format(self.price))
+        print("Buyer Pays Price: ${}".format(self.buyer_price))
+        print("Seller Recieves Price: ${}".format(self.seller_price))
+        print("Steam Commission: ${}".format(self.steam_cut))
         print("Volume: {}".format(self.volume))
         print("Game: {}".format(self.game))
         print("-"*40)
@@ -75,6 +79,9 @@ def get_details(term, soup=None):
 
     # Get item stats from search result
     volume = soup.find_all('span', class_="market_listing_num_listings_qty")
+    norm_price = soup.find_all(lambda tag: tag.name == 'span' and
+                                   tag.get('class') == ['normal_price'])
+
     sale_price = soup.find_all('span', class_="sale_price")
     item_name = soup.find_all('span', class_="market_listing_item_name")
     game_name = soup.find_all('span', class_="market_listing_game_name")
@@ -82,8 +89,9 @@ def get_details(term, soup=None):
     # Create objects for each item found
     obj = []
     for i in range(len(volume)):
-        obj.append(SteamItem(item_name[i].get_text(), sale_price[i].get_text(),
-                                volume[i].get_text(), game_name[i].get_text()))
+        obj.append(SteamItem(item_name[i].get_text(), norm_price[i].get_text(),
+                            sale_price[i].get_text(), volume[i].get_text(),
+                            game_name[i].get_text()))
 
     return obj
 
@@ -126,23 +134,24 @@ def main():
 
     args = parser.parse_args()
 
-    if not args.search:
-        parser.print_help()
-        sys.exit(1)
-
     # optionally list the games that can be searched on the marketplace
     if args.list:
         game_list = get_games()
         for item in game_list:
             item.display()
 
-    term = args.search
-    out = get_details(term)
-    if out == 0:
-        print("No matches for search: {}".format(term))
+    if args.search:
+        term = args.search
+        out = get_details(term)
+        if out == 0:
+            print("No matches for search: {}".format(term))
+        else:
+            for item in out:
+                item.display()
+
     else:
-        for item in out:
-            item.display()
+        parser.print_help()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
